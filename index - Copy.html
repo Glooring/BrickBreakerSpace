@@ -3,40 +3,33 @@
 <head>
     <meta charset="utf-8">
     <title>Brick Breaker Space</title>
-    <!-- Removed initial-scale=1.0 -->
-    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
-        html, body {
-            /* Ensure html and body take up full height */
-            height: 100%;
+        body {
+            touch-action: none;
             margin: 0;
             padding: 0;
             background-color: black;
-            /* Removed overflow: hidden; */
-            touch-action: none;
-            text-align: center;
+            overflow: hidden;
         }
 
         #unity-container {
             position: relative;
             width: 100%;
-            height: 100%;
+            height: 100vh;
             background-color: black;
-            /* Removed display: flex; and related properties */
-            /* Centering will be handled differently */
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* Updated canvas styles */
-        #unity-canvas {
-            display: block;
-            margin: 0 auto;
-            background-color: black;
-            /* Remove width and height styles; handled via JavaScript */
-        }
-
-        /* Remove focus outline on the canvas */
+        /* Remove the focus outline on the canvas */
         #unity-canvas:focus {
             outline: none;
+        }
+
+        #unity-canvas {
+            background-color: black;
         }
 
         /* Hide loading bar and footer for a minimalist look */
@@ -61,8 +54,6 @@
             companyName: "DefaultCompany",
             productName: "Brick Breaker Space",
             productVersion: "1.0",
-            // Let Unity auto-resize the WebGL canvas
-            // Removed matchWebGLToCanvasSize: false,
         };
 
         // Prevent context menu on right-click
@@ -77,27 +68,40 @@
             const aspectRatio = 9 / 16;
             let width, height;
 
-            // Use window.innerWidth and window.innerHeight for both modes
-            let availableWidth = window.innerWidth;
-            let availableHeight = window.innerHeight;
+            if (document.fullscreenElement) {
+                // In fullscreen, use screen dimensions
+                let screenWidth = screen.width;
+                let screenHeight = screen.height;
 
-            // Calculate the ideal width and height to maintain aspect ratio
-            if (availableHeight * aspectRatio <= availableWidth) {
-                height = availableHeight;
-                width = height * aspectRatio;
+                if (screenHeight * aspectRatio <= screenWidth) {
+                    height = screenHeight;
+                    width = height * aspectRatio;
+                } else {
+                    width = screenWidth;
+                    height = width / aspectRatio;
+                }
             } else {
-                width = availableWidth;
-                height = width / aspectRatio;
+                // In windowed mode, use container dimensions
+                let containerWidth = container.clientWidth;
+                let containerHeight = container.clientHeight;
+
+                if (containerHeight * aspectRatio <= containerWidth) {
+                    height = containerHeight;
+                    width = height * aspectRatio;
+                } else {
+                    width = containerWidth;
+                    height = width / aspectRatio;
+                }
             }
 
             // Set the canvas size
             canvas.style.width = width + 'px';
             canvas.style.height = height + 'px';
 
-            // Center the canvas within the container
-            canvas.style.marginTop = ((availableHeight - height) / 2) + 'px';
-
-            // Unity will automatically adjust the WebGL context size
+            // Update Unity's WebGL rendering context size
+            if (unityInstance != null) {
+                unityInstance.SendMessage('GameManager', 'OnCanvasResize');
+            }
         }
 
         // Fullscreen toggle with F11 key
