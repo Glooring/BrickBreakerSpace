@@ -12,7 +12,6 @@
             margin: 0;
             padding: 0;
             background-color: black;
-            /* Removed overflow: hidden; */
             touch-action: none;
             text-align: center;
         }
@@ -22,8 +21,6 @@
             width: 100%;
             height: 100%;
             background-color: black;
-            /* Removed display: flex; and related properties */
-            /* Centering will be handled differently */
         }
 
         /* Updated canvas styles */
@@ -31,7 +28,6 @@
             display: block;
             margin: 0 auto;
             background-color: black;
-            /* Remove width and height styles; handled via JavaScript */
         }
 
         /* Remove focus outline on the canvas */
@@ -43,12 +39,57 @@
         #unity-loading-bar, #unity-footer {
             display: none;
         }
+
+        /* Custom Loading Screen Styles */
+        #custom-loader {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        #custom-loader-text {
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+        }
+
+        /* Optional Spinner Styles */
+        #custom-loader-spinner {
+            border: 16px solid #f3f3f3;
+            border-top: 16px solid #555;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            animation: spin 2s linear infinite;
+        }
+
+        /* Spinner Animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <!-- Custom Loading Screen -->
+    <div id="custom-loader">
+        <!-- You can use either text or spinner -->
+        <!-- <div id="custom-loader-text">Loading...</div> -->
+        <div id="custom-loader-spinner"></div>
+    </div>
+
+    <!-- Unity Container -->
     <div id="unity-container">
         <canvas id="unity-canvas" tabindex="1"></canvas>
     </div>
+
     <script>
         // Unity loader configuration
         var buildUrl = "Build";
@@ -61,8 +102,6 @@
             companyName: "DefaultCompany",
             productName: "Brick Breaker Space",
             productVersion: "1.0",
-            // Let Unity auto-resize the WebGL canvas
-            // Removed matchWebGLToCanvasSize: false,
         };
 
         // Prevent context menu on right-click
@@ -96,8 +135,6 @@
 
             // Center the canvas within the container
             canvas.style.marginTop = ((availableHeight - height) / 2) + 'px';
-
-            // Unity will automatically adjust the WebGL context size
         }
 
         // Fullscreen toggle with F11 key
@@ -121,9 +158,16 @@
         // Load Unity script
         var script = document.createElement("script");
         script.src = loaderUrl;
+
+        // Show the custom loader when the script starts loading
+        document.getElementById('custom-loader').style.display = 'flex';
+
         script.onload = () => {
+            // Hide the custom loader when Unity's loading screen appears
+            document.getElementById('custom-loader').style.display = 'none';
+
             createUnityInstance(canvas, config, (progress) => {
-                // Optionally handle the progress bar here
+                // Optionally handle the Unity progress bar here
             }).then((instance) => {
                 unityInstance = instance;
                 resizeCanvas();
