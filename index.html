@@ -3,11 +3,9 @@
 <head>
     <meta charset="utf-8">
     <title>Brick Breaker Space</title>
-    <!-- Removed initial-scale=1.0 -->
     <meta name="viewport" content="width=device-width, user-scalable=no">
     <style>
         html, body {
-            /* Ensure html and body take up full height */
             height: 100%;
             margin: 0;
             padding: 0;
@@ -23,66 +21,115 @@
             background-color: black;
         }
 
-        /* Updated canvas styles */
         #unity-canvas {
             display: block;
             margin: 0 auto;
             background-color: black;
         }
 
-        /* Remove focus outline on the canvas */
         #unity-canvas:focus {
             outline: none;
         }
 
-        /* Hide loading bar and footer for a minimalist look */
+        /* Hide Unity's default loading bar and footer */
         #unity-loading-bar, #unity-footer {
             display: none;
         }
 
-        /* Custom Loading Screen Styles */
-        #custom-loader {
-            position: fixed;
+        /* Loading Screen Styles (adapted from Godot) */
+        #status {
+            position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: black;
+            right: 0;
+            bottom: 0;
             display: flex;
             justify-content: center;
             align-items: center;
+            /* Make it visible initially */
+            visibility: visible;
             z-index: 9999;
         }
 
-        #custom-loader-text {
-            color: white;
-            font-family: Arial, sans-serif;
-            font-size: 24px;
+        #status-progress {
+            width: 366px;
+            height: 7px;
+            background-color: #38363A;
+            border: 1px solid #444246;
+            padding: 1px;
+            box-shadow: 0 0 2px 1px #1B1C22;
+            border-radius: 2px;
+            visibility: visible;
         }
 
-        /* Optional Spinner Styles */
-        #custom-loader-spinner {
-            border: 16px solid #f3f3f3;
-            border-top: 16px solid #555;
-            border-radius: 50%;
-            width: 80px;
-            height: 80px;
-            animation: spin 2s linear infinite;
+        @media only screen and (orientation:portrait) {
+            #status-progress {
+                width: 61.8%;
+            }
         }
 
-        /* Spinner Animation */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        #status-progress-inner {
+            height: 100%;
+            width: 0;
+            box-sizing: border-box;
+            transition: width 0.5s linear;
+            background-color: #202020;
+            border: 1px solid #222223;
+            box-shadow: 0 0 1px 1px #27282E;
+            border-radius: 3px;
+        }
+
+        #status-indeterminate {
+            height: 42px;
+            visibility: visible;
+            position: relative;
+        }
+
+        #status-indeterminate > div {
+            width: 4.5px;
+            height: 0;
+            border-style: solid;
+            border-width: 9px 3px 0 3px;
+            border-color: #2b2b2b transparent transparent transparent;
+            transform-origin: center 21px;
+            position: absolute;
+        }
+
+        /* Rotating elements for indeterminate loading */
+        #status-indeterminate > div:nth-child(1) { transform: rotate( 22.5deg); }
+        #status-indeterminate > div:nth-child(2) { transform: rotate( 67.5deg); }
+        #status-indeterminate > div:nth-child(3) { transform: rotate(112.5deg); }
+        #status-indeterminate > div:nth-child(4) { transform: rotate(157.5deg); }
+        #status-indeterminate > div:nth-child(5) { transform: rotate(202.5deg); }
+        #status-indeterminate > div:nth-child(6) { transform: rotate(247.5deg); }
+        #status-indeterminate > div:nth-child(7) { transform: rotate(292.5deg); }
+        #status-indeterminate > div:nth-child(8) { transform: rotate(337.5deg); }
+
+        #status-notice {
+            margin: 0 100px;
+            line-height: 1.3;
+            visibility: visible;
+            padding: 4px 6px;
         }
     </style>
 </head>
 <body>
-    <!-- Custom Loading Screen -->
-    <div id="custom-loader">
-        <!-- You can use either text or spinner -->
-        <!-- <div id="custom-loader-text">Loading...</div> -->
-        <div id="custom-loader-spinner"></div>
+    <!-- Loading Screen -->
+    <div id="status">
+        <div id="status-progress" style="display: none;" oncontextmenu="event.preventDefault();">
+            <div id="status-progress-inner"></div>
+        </div>
+        <div id="status-indeterminate" style="display: none;" oncontextmenu="event.preventDefault();">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <div id="status-notice" style="display: none;"></div>
     </div>
 
     <!-- Unity Container -->
@@ -102,6 +149,8 @@
             companyName: "DefaultCompany",
             productName: "Brick Breaker Space",
             productVersion: "1.0",
+            // Uncomment the following line to match the canvas size
+            // matchWebGLToCanvasSize: false,
         };
 
         // Prevent context menu on right-click
@@ -111,16 +160,78 @@
         let container = document.getElementById("unity-container");
         let unityInstance = null;
 
-        // Function to resize the canvas while maintaining aspect ratio
+        // Loading Screen Elements
+        const status = document.getElementById('status');
+        const statusProgress = document.getElementById('status-progress');
+        const statusProgressInner = document.getElementById('status-progress-inner');
+        const statusIndeterminate = document.getElementById('status-indeterminate');
+        const statusNotice = document.getElementById('status-notice');
+
+        let initializing = true;
+        let statusMode = 'hidden';
+
+        // Animation for the indeterminate loader
+        let animationCallbacks = [];
+        function animate(time) {
+            animationCallbacks.forEach((callback) => callback(time));
+            requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+
+        function animateStatusIndeterminate(ms) {
+            const i = Math.floor((ms / 100) % 8);
+            if (statusIndeterminate.children[i].style.borderTopColor === '') {
+                Array.prototype.slice.call(statusIndeterminate.children).forEach((child) => {
+                    child.style.borderTopColor = '';
+                });
+                statusIndeterminate.children[i].style.borderTopColor = '#dfdfdf';
+            }
+        }
+
+        function setStatusMode(mode) {
+            if (statusMode === mode || !initializing) {
+                return;
+            }
+            [statusProgress, statusIndeterminate, statusNotice].forEach((elem) => {
+                elem.style.display = 'none';
+            });
+            animationCallbacks = animationCallbacks.filter(function (value) {
+                return (value !== animateStatusIndeterminate);
+            });
+            switch (mode) {
+                case 'progress':
+                    statusProgress.style.display = 'block';
+                    break;
+                case 'indeterminate':
+                    statusIndeterminate.style.display = 'block';
+                    animationCallbacks.push(animateStatusIndeterminate);
+                    break;
+                case 'notice':
+                    statusNotice.style.display = 'block';
+                    break;
+                case 'hidden':
+                    status.style.display = 'none';
+                    break;
+                default:
+                    throw new Error('Invalid status mode');
+            }
+            statusMode = mode;
+        }
+
+        function displayFailureNotice(err) {
+            const msg = err.message || err;
+            console.error(msg);
+            statusNotice.innerText = msg;
+            setStatusMode('notice');
+            initializing = false;
+        }
+
         function resizeCanvas() {
             const aspectRatio = 9 / 16;
             let width, height;
-
-            // Use window.innerWidth and window.innerHeight for both modes
             let availableWidth = window.innerWidth;
             let availableHeight = window.innerHeight;
 
-            // Calculate the ideal width and height to maintain aspect ratio
             if (availableHeight * aspectRatio <= availableWidth) {
                 height = availableHeight;
                 width = height * aspectRatio;
@@ -129,11 +240,8 @@
                 height = width / aspectRatio;
             }
 
-            // Set the canvas size
             canvas.style.width = width + 'px';
             canvas.style.height = height + 'px';
-
-            // Center the canvas within the container
             canvas.style.marginTop = ((availableHeight - height) / 2) + 'px';
         }
 
@@ -155,26 +263,34 @@
         document.addEventListener('fullscreenchange', resizeCanvas);
         window.addEventListener('resize', resizeCanvas);
 
+        // Start the loading screen
+        setStatusMode('indeterminate');
+
         // Load Unity script
         var script = document.createElement("script");
         script.src = loaderUrl;
 
-        // Show the custom loader when the script starts loading
-        document.getElementById('custom-loader').style.display = 'flex';
-
         script.onload = () => {
-            // Hide the custom loader when Unity's loading screen appears
-            document.getElementById('custom-loader').style.display = 'none';
-
             createUnityInstance(canvas, config, (progress) => {
-                // Optionally handle the Unity progress bar here
+                if (progress === 1) {
+                    setStatusMode('hidden');
+                    initializing = false;
+                } else {
+                    statusProgressInner.style.width = `${(progress * 100)}%`;
+                    setStatusMode('progress');
+                }
             }).then((instance) => {
                 unityInstance = instance;
                 resizeCanvas();
             }).catch((message) => {
-                alert(message);
+                displayFailureNotice(message);
             });
         };
+
+        script.onerror = () => {
+            displayFailureNotice('Failed to load Unity loader script.');
+        };
+
         document.body.appendChild(script);
     </script>
 </body>
