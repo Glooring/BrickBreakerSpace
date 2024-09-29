@@ -2,8 +2,8 @@
 <html lang="en-us">
 <head>
     <meta charset="utf-8">
-    <title>Brick Breaker Space</title>
-    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <title>Catch The Thief</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0">
     <style>
         html, body {
             height: 100%;
@@ -12,6 +12,7 @@
             background-color: black;
             touch-action: none;
             text-align: center;
+            overflow: hidden; /* Prevent scrollbars */
         }
 
         #unity-container {
@@ -19,12 +20,14 @@
             width: 100%;
             height: 100%;
             background-color: black;
+            overflow: hidden; /* Prevent canvas overflow */
         }
 
         #unity-canvas {
             display: block;
             margin: 0 auto;
             background-color: black;
+            image-rendering: auto; /* Ensure crisp scaling */
         }
 
         #unity-canvas:focus {
@@ -136,11 +139,10 @@
     <div id="unity-container">
         <canvas id="unity-canvas" tabindex="1"></canvas>
     </div>
-
     <script>
-        // Unity loader configuration
         var buildUrl = "Build";
-        var loaderUrl = buildUrl + "/BrickBreakerSpaceWeb.loader.js";
+        var loaderUrl = buildUrl + "/CatchTheThiefWeb.loader.js";
+
 		// Function to log the zoom percentage, unityDevicePixelRatio, and FBO size
 		function logZoomPercentage() {
 			let zoomPercentage = window.devicePixelRatio * 100;
@@ -205,20 +207,24 @@
 			console.log(`Final devicePixelRatio: ${devicePixelRatio} (Mobile: ${isMobile})`);
 			return devicePixelRatio;
 		}
-        var config = {
-            dataUrl: buildUrl + "/BrickBreakerSpaceWeb.data",
-            frameworkUrl: buildUrl + "/BrickBreakerSpaceWeb.framework.js",
-            codeUrl: buildUrl + "/BrickBreakerSpaceWeb.wasm",
-            streamingAssetsUrl: "StreamingAssets",
-            companyName: "DefaultCompany",
-            productName: "Brick Breaker Space",
-            productVersion: "1.0",
+
+		// Unity configuration, using the dynamically calculated devicePixelRatio
+		var config = {
+			dataUrl: buildUrl + "/CatchTheThiefWeb.data",
+			frameworkUrl: buildUrl + "/CatchTheThiefWeb.framework.js",
+			codeUrl: buildUrl + "/CatchTheThiefWeb.wasm",
+			streamingAssetsUrl: "StreamingAssets",
+			companyName: "DefaultCompany",
+			productName: "Catch The Thief",
+			productVersion: "1.0",
 			devicePixelRatio: getDevicePixelRatio() // Apply the dynamic devicePixelRatio with extra scaling
-            // matchWebGLToCanvasSize: false,
-        };
+		};
+
+
 
         // Prevent context menu on right-click
         document.addEventListener('contextmenu', event => event.preventDefault());
+
         // Prevent browser zooming via keyboard and mouse wheel
         document.addEventListener('keydown', function(event) {
             if (event.ctrlKey && (event.key === '+' || event.key === '-' || event.key === '=' || event.key === '_')) {
@@ -301,19 +307,22 @@
             initializing = false;
         }
 
-        function resizeCanvas() {
-            const aspectRatio = 9 / 16;
-            let width, height;
-            let availableWidth = window.innerWidth;
-            let availableHeight = window.innerHeight;
+		function resizeCanvas() {
+			const aspectRatio = 9 / 16;
+			let width, height;
 
-            if (availableHeight * aspectRatio <= availableWidth) {
-                height = availableHeight;
-                width = height * aspectRatio;
-            } else {
-                width = availableWidth;
-                height = width / aspectRatio;
-            }
+			// Use window.innerWidth and window.innerHeight for both modes
+			let availableWidth = window.innerWidth;
+			let availableHeight = window.innerHeight;
+
+			// Calculate the ideal width and height to maintain aspect ratio
+			if (availableHeight * aspectRatio <= availableWidth) {
+				height = availableHeight;
+				width = height * aspectRatio;
+			} else {
+				width = availableWidth;
+				height = width / aspectRatio;
+			}
 
 			// Set the canvas size in CSS pixels
 			canvas.style.width = width + 'px';
